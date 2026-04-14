@@ -135,10 +135,10 @@
                             <option value="sales:price_per_sqft">Sales listings - Price</option>
                             <option value="rental:price">Rental listings - Price</option>
                         </optgroup>
-                        <optgroup label="Other Data">
+                        <optgroup label="Housing">
                             <option value="geojson:MedianYearBuilt">Median Year Built</option>
-                            <option value="geojson:NWI">Walkability</option>
                             <option value="geojson:UnitChange">Housing Unit Change</option>
+                            <option value="geojson:suitability">Housing Location Suitability</option>
                         </optgroup>
                     </select>
                 </div>
@@ -237,6 +237,14 @@
             </div>
             <span>Subregions</span>
         </label>
+        <label class="flex items-center gap-2 text-sm text-gray-700 mb-2">
+            <div class="relative">
+                <input type="checkbox" class="sr-only overlay-toggle peer" value="muni-outline" />
+                <div class="w-6 h-3.5 bg-gray-300 rounded-full peer-checked:bg-gray-600 transition-colors"></div>
+                <div class="absolute top-[2px] left-[2px] w-2.5 h-2.5 bg-white border border-gray-400 rounded-full transition-transform peer-checked:translate-x-[10px]"></div>
+            </div>
+            <span>Municipalities</span>
+        </label>
     </div>
 
     <!-- Map container -->
@@ -300,8 +308,9 @@
         salesListings: 'sales_listings.csv',
         rentalListings: 'rental_listings.csv',
         medianYearBuilt: 'MedianYearBuilt.geojson',
-        nwi: 'NWI.geojson',
-        unitChange: 'https://raw.githubusercontent.com/CommunityScale/public/refs/heads/main/data/IL/UnitChange.geojson'
+        unitChange: 'https://raw.githubusercontent.com/CommunityScale/public/refs/heads/main/data/IL/UnitChange.geojson',
+        muni: 'willcomuni.geojson',
+        suitability: 'willcosuit2.geojson'
     };
 
     // Layer source information
@@ -368,8 +377,10 @@
     let salesListingsData = null; // Will store the parsed CSV data
     let rentalListingsData = null; // Will store the parsed CSV data
     let medianYearBuiltData = null; // Will store the GeoJSON data
-    let nwiData = null; // Will store the GeoJSON data
     let unitChangeData = null; // Will store the GeoJSON data
+    let muni = null;
+    let muniLabelData = null;
+    let suitability = null;
     let currentDataLayer = null;
     let currentLayerName = null; // Store the layer name separately
 
@@ -612,6 +623,53 @@
 
         console.log('Added subregions overlay layer');
 
+        // Add muni boundary overlay source (populated after fetch)
+        map.addSource('muni-source', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] }
+        });
+
+        // Separate point source for labels (one centroid per municipality)
+        map.addSource('muni-label-source', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] }
+        });
+
+        // Add muni boundary overlay layer (outline, hidden by default)
+        map.addLayer({
+            id: 'muni-outline',
+            type: 'line',
+            source: 'muni-source',
+            paint: {
+                'line-color': '#374151',
+                'line-width': 1.5
+            },
+            layout: {
+                visibility: 'none'
+            }
+        }, firstSymbolId);
+
+        // Add muni labels layer (hidden by default)
+        map.addLayer({
+            id: 'muni-labels',
+            type: 'symbol',
+            source: 'muni-label-source',
+            layout: {
+                'text-field': ['get', 'NAME_TC'],
+                'text-size': 11,
+                'text-anchor': 'center',
+                'text-max-width': 8,
+                visibility: 'none'
+            },
+            paint: {
+                'text-color': '#1f2937',
+                'text-halo-color': '#ffffff',
+                'text-halo-width': 1.5
+            }
+        });
+
+        console.log('Added subregions overlay layer');
+
         // Load tract data from JSON
         fetch('https://raw.githubusercontent.com/CommunityScale/public/main/data/US/USA_CTs_251222.json')
             .then(response => {
@@ -679,15 +737,6 @@
             })
             .catch(error => console.error('Error loading MedianYearBuilt GeoJSON:', error));
 
-        // Load NWI GeoJSON
-        fetch(DATA_FILES.nwi)
-            .then(response => response.json())
-            .then(data => {
-                nwiData = data;
-                console.log(`Loaded NWI GeoJSON with ${data.features.length} features`);
-            })
-            .catch(error => console.error('Error loading NWI GeoJSON:', error));
-
         // Load UnitChange GeoJSON
         fetch(DATA_FILES.unitChange)
             .then(response => response.json())
@@ -696,6 +745,47 @@
                 console.log(`Loaded UnitChange GeoJSON with ${data.features.length} features`);
             })
             .catch(error => console.error('Error loading UnitChange GeoJSON:', error));
+
+        // Load Muni boundaries GeoJSON
+        fetch(DATA_FILES.muni)
+            .then(response => response.json())
+            .then(data => {
+                data.features.forEach(f => {
+                    if (f.properties.NAME) {
+                        f.properties.NAME_TC = toTitleCase(f.properties.NAME);
+                    }
+                });
+                muni = data;
+
+                // Build one centroid point per municipality for labels
+                muniLabelData = {
+                    type: 'FeatureCollection',
+                    features: data.features.map(f => ({
+                        type: 'Feature',
+                        geometry: { type: 'Point', coordinates: getBBoxCenter(f.geometry) },
+                        properties: { NAME_TC: f.properties.NAME_TC }
+                    }))
+                };
+
+                if (map.getSource('muni-source')) {
+                    map.getSource('muni-source').setData(data);
+                }
+                if (map.getSource('muni-label-source')) {
+                    map.getSource('muni-label-source').setData(muniLabelData);
+                }
+                console.log(`Loaded Muni GeoJSON with ${data.features.length} features`);
+            })
+            .catch(error => console.error('Error loading Muni GeoJSON:', error));
+
+        // Load Suitability GeoJSON
+        fetch(DATA_FILES.suitability)
+            .then(response => response.json())
+            .then(data => {
+                suitability = data;
+                console.log(`Loaded Suitability GeoJSON with ${data.features.length} features`);
+            })
+            .catch(error => console.error('Error loading Suitability GeoJSON:', error));
+
 
         // Fit to county boundary (unless custom center/zoom is specified)
         if (!CUSTOM_CENTER && !CUSTOM_ZOOM) {
@@ -710,6 +800,24 @@
     // ============================================
     // HELPER FUNCTIONS
     // ============================================
+
+    function toTitleCase(str) {
+        return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function getBBoxCenter(geometry) {
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        const rings = geometry.type === 'Polygon'
+            ? [geometry.coordinates[0]]
+            : geometry.coordinates.map(p => p[0]);
+        rings.forEach(ring => ring.forEach(([x, y]) => {
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+        }));
+        return [(minX + maxX) / 2, (minY + maxY) / 2];
+    }
 
     function fitMapToCountyAPI() {
         // Query features and fit to county bounds
@@ -1405,15 +1513,68 @@
             moveOverlaysToTop();
 
             console.log(`Created UnitChange layer with ${unitChangeData.features.length} features`);
+        } else if (layerName === 'suitability') {
+            if (!suitability) {
+                console.error('Suitability GeoJSON data not loaded yet');
+                return;
+            }
+
+            currentDataLayer = 'geojson-Suitability';
+            currentLayerName = 'geojson:suitability';
+
+            map.addSource('geojson-Suitability-source', {
+                type: 'geojson',
+                data: suitability
+            });
+
+            // Add score layers bottom (3) to top (5) to control rendering order
+            [
+                { score: 3, color: '#c7e9b4' },
+                { score: 4, color: '#41b6c4' },
+                { score: 5, color: '#253494' }
+            ].forEach(({ score, color }) => {
+                map.addLayer({
+                    id: `geojson-Suitability-${score}`,
+                    type: 'fill',
+                    source: 'geojson-Suitability-source',
+                    filter: ['==', ['get', 'SuitScor4'], score],
+                    paint: {
+                        'fill-color': color
+                    }
+                });
+            });
+
+            const legendTitle = document.getElementById('legend-title');
+            const legendContent = document.getElementById('legend-content');
+            legendTitle.textContent = 'Housing Location Suitability';
+            legendContent.innerHTML = '';
+            [
+                { color: '#253494', label: 'Best walkability + transit, good job/amenity access' },
+                { color: '#41b6c4', label: 'Moderate walkability + transit, good job/amenity access' },
+                { color: '#c7e9b4', label: 'Limited walkability + transit, moderate job/amenity access'},
+            ].forEach(({ color, label }) => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center gap-2';
+                item.innerHTML = `<div class="w-4 h-4 rounded border border-gray-300 flex-shrink-0" style="background-color:${color}"></div><span>${label}</span>`;
+                legendContent.appendChild(item);
+            });
+            document.getElementById('legend').classList.remove('hidden');
+
+            moveOverlaysToTop();
+            console.log(`Created Suitability layer with ${suitability.features.length} features`);
         }
     }
 
     // Ensure overlay layers are on top of all data layers
     function moveOverlaysToTop() {
-        // Move subregions to top if it exists and is visible
         if (map.getLayer('subregions-outline')) {
-            const visibility = map.getLayoutProperty('subregions-outline', 'visibility');
             map.moveLayer('subregions-outline');
+        }
+        if (map.getLayer('muni-outline')) {
+            map.moveLayer('muni-outline');
+        }
+        if (map.getLayer('muni-labels')) {
+            map.moveLayer('muni-labels');
         }
     }
 
@@ -1441,6 +1602,15 @@
         }
         if (map.getSource('geojson-UnitChange-source')) {
             map.removeSource('geojson-UnitChange-source');
+        }
+
+        [3, 4, 5].forEach(score => {
+            if (map.getLayer(`geojson-Suitability-${score}`)) {
+                map.removeLayer(`geojson-Suitability-${score}`);
+            }
+        });
+        if (map.getSource('geojson-Suitability-source')) {
+            map.removeSource('geojson-Suitability-source');
         }
     }
 
@@ -1891,7 +2061,7 @@
         const savedLayerState = currentDataLayer;
 
         // Capture visible overlay states before switching
-        const overlayLayers = ['subregions-outline'];
+        const overlayLayers = ['subregions-outline', 'muni-outline', 'muni-labels'];
         const visibleOverlays = overlayLayers.filter(id => {
             const layer = map.getLayer(id);
             return layer && map.getLayoutProperty(id, 'visibility') === 'visible';
@@ -2046,6 +2216,48 @@
                 }
             }, firstSymbolId);
 
+            // Re-add muni source and layers
+            map.addSource('muni-source', {
+                type: 'geojson',
+                data: muni || { type: 'FeatureCollection', features: [] }
+            });
+
+            map.addSource('muni-label-source', {
+                type: 'geojson',
+                data: muniLabelData || { type: 'FeatureCollection', features: [] }
+            });
+
+            map.addLayer({
+                id: 'muni-outline',
+                type: 'line',
+                source: 'muni-source',
+                paint: {
+                    'line-color': '#374151',
+                    'line-width': 1.5
+                },
+                layout: {
+                    visibility: 'none'
+                }
+            }, firstSymbolId);
+
+            map.addLayer({
+                id: 'muni-labels',
+                type: 'symbol',
+                source: 'muni-label-source',
+                layout: {
+                    'text-field': ['get', 'NAME_TC'],
+                    'text-size': 11,
+                    'text-anchor': 'center',
+                    'text-max-width': 8,
+                    visibility: 'none'
+                },
+                paint: {
+                    'text-color': '#1f2937',
+                    'text-halo-color': '#ffffff',
+                    'text-halo-width': 1.5
+                }
+            });
+
             console.log('Re-added overlay layers');
 
             // Restore visibility for overlays that were visible before switch
@@ -2185,10 +2397,18 @@
         input.addEventListener('change', function() {
             const layerId = this.value;
             const isChecked = this.checked;
+            const visibility = isChecked ? 'visible' : 'none';
 
             if (map.getLayer(layerId)) {
-                map.setLayoutProperty(layerId, 'visibility', isChecked ? 'visible' : 'none');
+                map.setLayoutProperty(layerId, 'visibility', visibility);
                 console.log('Overlay', layerId, isChecked ? 'shown' : 'hidden');
+            }
+
+            // Toggle linked layers
+            if (layerId === 'muni-outline') {
+                if (map.getLayer('muni-labels')) {
+                    map.setLayoutProperty('muni-labels', 'visibility', visibility);
+                }
             }
         });
     });
@@ -2398,6 +2618,8 @@
     map.on('mouseleave', 'counties-outline', function() {
         map.getCanvas().style.cursor = '';
     });
+
+
 </script>
 
 </body>
