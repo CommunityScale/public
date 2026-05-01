@@ -649,26 +649,7 @@
             }
         }, firstSymbolId);
 
-        // Add muni labels layer (hidden by default)
-        map.addLayer({
-            id: 'muni-labels',
-            type: 'symbol',
-            source: 'muni-label-source',
-            layout: {
-                'text-field': ['get', 'NAME_TC'],
-                'text-size': 11,
-                'text-anchor': 'center',
-                'text-max-width': 8,
-                visibility: 'none'
-            },
-            paint: {
-                'text-color': '#1f2937',
-                'text-halo-color': '#ffffff',
-                'text-halo-width': 1.5
-            }
-        });
-
-        console.log('Added subregions overlay layer');
+ 
 
         // Load tract data from JSON
         fetch('https://raw.githubusercontent.com/CommunityScale/public/main/data/US/USA_CTs_251222.json')

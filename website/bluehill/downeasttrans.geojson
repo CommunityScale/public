@@ -1,0 +1,19 @@
+{
+"type": "FeatureCollection",
+"name": "downeasttrans",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "id": 1, "stop": "Pug Nuts" }, "geometry": { "type": "Point", "coordinates": [ -68.502181890082355, 44.495246510563973 ] } },
+{ "type": "Feature", "properties": { "id": 2, "stop": "Bay School" }, "geometry": { "type": "Point", "coordinates": [ -68.594077461349059, 44.403831058807015 ] } },
+{ "type": "Feature", "properties": { "id": 3, "stop": "Town Hall" }, "geometry": { "type": "Point", "coordinates": [ -68.589245200065776, 44.412771422826026 ] } },
+{ "type": "Feature", "properties": { "id": 4, "stop": "Pen Bay Press" }, "geometry": { "type": "Point", "coordinates": [ -68.663038619906459, 44.156053122151953 ] } },
+{ "type": "Feature", "properties": { "id": 5, "stop": "Stonington Manor" }, "geometry": { "type": "Point", "coordinates": [ -68.683351070437141, 44.163717728153195 ] } },
+{ "type": "Feature", "properties": { "id": 6, "stop": "Burnt Cove" }, "geometry": { "type": "Point", "coordinates": [ -68.691782725063661, 44.166636492195636 ] } },
+{ "type": "Feature", "properties": { "id": 7, "stop": "Eaton Plumbing" }, "geometry": { "type": "Point", "coordinates": [ -68.70571026192863, 44.199850309336149 ] } },
+{ "type": "Feature", "properties": { "id": 8, "stop": "Deer Run" }, "geometry": { "type": "Point", "coordinates": [ -68.67792354560099, 44.226667251839871 ] } },
+{ "type": "Feature", "properties": { "id": 9, "stop": "Little Deer Isle" }, "geometry": { "type": "Point", "coordinates": [ -68.695535073003342, 44.285772540794433 ] } },
+{ "type": "Feature", "properties": { "id": 10, "stop": "Benj River" }, "geometry": { "type": "Point", "coordinates": [ -68.61257989990844, 44.304351996808691 ] } },
+{ "type": "Feature", "properties": { "id": 11, "stop": "Brooklin Gen Store" }, "geometry": { "type": "Point", "coordinates": [ -68.569200577270919, 44.266029529509332 ] } },
+{ "type": "Feature", "properties": { "id": 12, "stop": "North Brooklin" }, "geometry": { "type": "Point", "coordinates": [ -68.570519571102494, 44.305778848393516 ] } }
+]
+}
